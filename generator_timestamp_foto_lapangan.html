@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timestamp Foto Lapangan - Generator Watermark Lokasi & Waktu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Google Fonts: Roboto (mirip font Android Timestamp Camera) & Inter untuk UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .canvas-container {
+            background-image: 
+                linear-gradient(45deg, #1e293b 25%, transparent 25%), 
+                linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #1e293b 75%), 
+                linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            background-color: #0f172a;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm">
+                    <i data-lucide="camera" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-slate-900 leading-tight">Timestamp Foto Lapangan</h1>
+                    <p class="text-xs text-slate-500">Generator Watermark Waktu & Lokasi Foto</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+        <div class="bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-medium">
+            <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400 shrink-0"></i>
+            <span id="toastMsg">Berhasil!</span>
+        </div>
+    </div>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+            <!-- LEFT COLUMN: Controls & Inputs -->
+            <div class="lg:col-span-5 space-y-5">
+
+                <!-- Step 1: Upload Photo -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="font-semibold text-slate-900 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">1</span>
+                            Upload Foto
+                        </h2>
+                        <span id="fileDimensionsBadge" class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium hidden"></span>
+                    </div>
+
+                    <label for="imageInput" id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-blue-500 bg-slate-50/70 hover:bg-blue-50/40 transition rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer text-center group">
+                        <div class="w-12 h-12 rounded-full bg-blue-100/80 text-blue-600 flex items-center justify-center mb-2 group-hover:scale-105 transition">
+                            <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                        </div>
+                        <p class="text-sm font-semibold text-slate-700 group-hover:text-blue-700">Klik untuk pilih foto atau tarik ke sini</p>
+                        <p class="text-xs text-slate-500 mt-1">Mendukung JPG, PNG, WEBP</p>
+                        <input type="file" id="imageInput" accept="image/*" class="hidden">
+                    </label>
+                </div>
+
+                <!-- Step 2: Data Timestamp & Lokasi -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="font-semibold text-slate-900 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">2</span>
+                            Isi Data Timestamp
+                        </h2>
+                        <div class="flex items-center gap-2">
+                            <button type="button" id="btnNow" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-2.5 py-1.5 rounded-lg transition flex items-center gap-1">
+                                <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                                Waktu Sekarang
+                            </button>
+                            <button type="button" id="btnClearLocation" class="text-xs text-slate-400 hover:text-rose-600 px-2 py-1.5 transition" title="Kosongkan semua kolom">Reset</button>
+                        </div>
+                    </div>
+
+                    <!-- Date & Time Picker -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="datePicker" class="block text-xs font-medium text-slate-700 mb-1">Tanggal</label>
+                            <input type="date" id="datePicker" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="timePicker" class="block text-xs font-medium text-slate-700 mb-1">Jam (JJ:MM:DD)</label>
+                            <input type="time" id="timePicker" step="1" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl border border-slate-200/80 text-xs">
+                        <span class="text-slate-500">Format Tanggal & Jam:</span>
+                        <span id="formattedTimestampPreview" class="font-semibold text-slate-800 font-mono">-</span>
+                    </div>
+
+                    <!-- Koordinat Lokasi (Copy Paste dari Google Maps) -->
+                    <div class="pt-2 border-t border-slate-100 space-y-2">
+                        <div>
+                            <label for="inputKoordinat" class="block text-xs font-medium text-slate-700 mb-1">
+                                Koordinat Lokasi <span class="text-slate-400 font-normal">(Opsional — Copy-Paste dari Google Maps)</span>
+                            </label>
+                            <input type="text" id="inputKoordinat" value="" placeholder="Contoh: -6.969035, 109.07316 atau 6.969035S 109.07316E" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="chkConvertGmaps" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5">
+                            <span class="text-[11px] text-slate-500">Ubah otomatis format desimal Google Maps ke format <code class="text-slate-700 font-mono">S/N E/W</code> (seperti di foto)</span>
+                        </label>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-100 space-y-3.5">
+                        <div>
+                            <label for="inputJalan" class="block text-xs font-medium text-slate-700 mb-1">Nama Jalan</label>
+                            <input type="text" id="inputJalan" value="" placeholder="Contoh: Jl. Raya" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label for="inputDesa" class="block text-xs font-medium text-slate-700">Nama Desa / Kelurahan <span class="text-slate-400 font-normal">(Opsional)</span></label>
+                                <span class="text-[11px] text-slate-400">Kosongkan jika digabung di Nama Jalan</span>
+                            </div>
+                            <input type="text" id="inputDesa" value="" placeholder="Contoh: Sidamulya" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <div>
+                            <label for="inputKecamatan" class="block text-xs font-medium text-slate-700 mb-1">Nama Kecamatan</label>
+                            <input type="text" id="inputKecamatan" value="" placeholder="Contoh: Kecamatan Wanasari" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <div>
+                            <label for="inputKabupaten" class="block text-xs font-medium text-slate-700 mb-1">Nama Kota / Kabupaten</label>
+                            <input type="text" id="inputKabupaten" value="" placeholder="Contoh: Kabupaten Brebes" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <div>
+                            <label for="inputProvinsi" class="block text-xs font-medium text-slate-700 mb-1">Nama Provinsi</label>
+                            <input type="text" id="inputProvinsi" value="" placeholder="Contoh: Jawa Tengah" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- Pengaturan Tampilan Teks (Ukuran, Margin, dll) -->
+                    <details class="group pt-2 border-t border-slate-100">
+                        <summary class="flex items-center justify-between cursor-pointer list-none text-xs font-semibold text-slate-600 hover:text-slate-900 py-1.5">
+                            <span class="flex items-center gap-1.5">
+                                <i data-lucide="sliders" class="w-3.5 h-3.5 text-blue-600"></i>
+                                Pengaturan Ukuran & Posisi Teks
+                            </span>
+                            <i data-lucide="chevron-down" class="w-4 h-4 transition-transform group-open:rotate-180"></i>
+                        </summary>
+                        <div class="pt-3 space-y-3 text-xs">
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-slate-600 font-medium">Ukuran Huruf</span>
+                                    <span id="fontSizeVal" class="text-slate-900 font-semibold">100%</span>
+                                </div>
+                                <input type="range" id="sliderFontSize" min="60" max="160" value="100" class="w-full accent-blue-600 cursor-pointer">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-slate-600 font-medium">Jarak Spasi Antar Baris</span>
+                                    <span id="lineHeightVal" class="text-slate-900 font-semibold">1.22x</span>
+                                </div>
+                                <input type="range" id="sliderLineHeight" min="105" max="150" value="122" class="w-full accent-blue-600 cursor-pointer">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-slate-600 font-medium">Jarak Kanan</span>
+                                        <span id="marginXVal" class="text-slate-900 font-semibold">2.0%</span>
+                                    </div>
+                                    <input type="range" id="sliderMarginX" min="5" max="80" value="20" class="w-full accent-blue-600 cursor-pointer">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-slate-600 font-medium">Jarak Bawah</span>
+                                        <span id="marginYVal" class="text-slate-900 font-semibold">2.0%</span>
+                                    </div>
+                                    <input type="range" id="sliderMarginY" min="5" max="80" value="20" class="w-full accent-blue-600 cursor-pointer">
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-slate-600 font-medium">Ketebalan Bayangan Gelap (Agar Teks Jelas)</span>
+                                    <span id="shadowVal" class="text-slate-900 font-semibold">Sedang</span>
+                                </div>
+                                <input type="range" id="sliderShadow" min="0" max="100" value="55" class="w-full accent-blue-600 cursor-pointer">
+                            </div>
+                        </div>
+                    </details>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Preview & Download -->
+            <div class="lg:col-span-7 lg:sticky lg:top-22 space-y-4">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div>
+                            <h2 class="font-semibold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="eye" class="w-4 h-4 text-blue-600"></i>
+                                Pratinjau Hasil Foto
+                            </h2>
+                            <p class="text-xs text-slate-500">Teks otomatis menyesuaikan resolusi asli foto saat diunduh</p>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button id="btnDownload" type="button" class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer">
+                                <i data-lucide="download" class="w-4 h-4"></i>
+                                <span>Unduh Foto (.JPG)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Container -->
+                    <div class="canvas-container rounded-xl overflow-hidden flex items-center justify-center min-h-[380px] max-h-[72vh] p-2 sm:p-4 border border-slate-800 relative">
+                        <canvas id="previewCanvas" class="max-w-full max-h-[68vh] w-auto h-auto object-contain rounded shadow-2xl"></canvas>
+                    </div>
+
+                    <!-- Preview Footer Info -->
+                    <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                        <span id="previewStatusText" class="flex items-center gap-1.5">
+                            <i data-lucide="info" class="w-3.5 h-3.5 text-blue-500"></i>
+                            Menampilkan pratinjau contoh. Silakan upload foto Anda di sebelah kiri.
+                        </span>
+                        <span class="font-mono text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded" id="outputFilenamePreview">timestamp-28-Sep-2026.jpg</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-slate-200 bg-white py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+            <p>Generator Timestamp Foto Lapangan — Aman & Privat (Foto tidak dikirim ke server mana pun).</p>
+            <p>Format Tanggal Indonesia Otomatis</p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Daftar singkatan bulan Bahasa Indonesia sesuai aplikasi Timestamp Camera (3 huruf)
+        const BULAN_INDO = [
+            'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+            'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+        ];
+
+        // DOM Elements
+        const imageInput = document.getElementById('imageInput');
+        const dropZone = document.getElementById('dropZone');
+        const fileDimensionsBadge = document.getElementById('fileDimensionsBadge');
+        const previewStatusText = document.getElementById('previewStatusText');
+        const outputFilenamePreview = document.getElementById('outputFilenamePreview');
+
+        const datePicker = document.getElementById('datePicker');
+        const timePicker = document.getElementById('timePicker');
+        const btnNow = document.getElementById('btnNow');
+        const formattedTimestampPreview = document.getElementById('formattedTimestampPreview');
+        const inputKoordinat = document.getElementById('inputKoordinat');
+        const chkConvertGmaps = document.getElementById('chkConvertGmaps');
+
+        const inputJalan = document.getElementById('inputJalan');
+        const inputDesa = document.getElementById('inputDesa');
+        const inputKecamatan = document.getElementById('inputKecamatan');
+        const inputKabupaten = document.getElementById('inputKabupaten');
+        const inputProvinsi = document.getElementById('inputProvinsi');
+
+        const sliderFontSize = document.getElementById('sliderFontSize');
+        const sliderLineHeight = document.getElementById('sliderLineHeight');
+        const sliderMarginX = document.getElementById('sliderMarginX');
+        const sliderMarginY = document.getElementById('sliderMarginY');
+        const sliderShadow = document.getElementById('sliderShadow');
+
+        const fontSizeVal = document.getElementById('fontSizeVal');
+        const lineHeightVal = document.getElementById('lineHeightVal');
+        const marginXVal = document.getElementById('marginXVal');
+        const marginYVal = document.getElementById('marginYVal');
+        const shadowVal = document.getElementById('shadowVal');
+
+        const btnClearLocation = document.getElementById('btnClearLocation');
+        const btnDownload = document.getElementById('btnDownload');
+
+        const canvas = document.getElementById('previewCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // State
+        let uploadedImage = null;
+        let originalFileName = 'foto-lapangan';
+        let currentFormattedTimestamp = '';
+
+        function padZero(num) {
+            return String(num).padStart(2, '0');
+        }
+
+        // Konversi otomatis dari input date (YYYY-MM-DD) & time (HH:mm:ss) ke format "28 Sep 2026 09.43.25"
+        function getFormattedTimestampFromPickers() {
+            if (!datePicker.value) return currentFormattedTimestamp;
+            const [year, month, day] = datePicker.value.split('-').map(Number);
+            const timeParts = (timePicker.value || '00:00:00').split(':');
+            const hours = padZero(timeParts[0] || 0);
+            const minutes = padZero(timeParts[1] || 0);
+            const seconds = padZero(timeParts[2] || 0);
+
+            const monthName = BULAN_INDO[(month - 1) % 12] || 'Jan';
+            return `${day} ${monthName} ${year} ${hours}.${minutes}.${seconds}`;
+        }
+
+        // Fungsi untuk memformat koordinat copy-paste dari Google Maps (misal: "-6.969035, 109.07316")
+        // menjadi format seperti pada foto ("6.969035S 109.07316E") jika checkbox dicentang
+        function formatCoordinateText(rawText) {
+            const trimmed = rawText.trim();
+            if (!trimmed) return '';
+            if (!chkConvertGmaps.checked) return trimmed;
+
+            // Cocokkan pola angka desimal berpasangan yang dipisahkan koma atau spasi dari Google Maps
+            const gmapsRegex = /^([+-]?\d+(?:\.\d+)?)\s*[,;\s]\s*([+-]?\d+(?:\.\d+)?)$/;
+            const match = trimmed.match(gmapsRegex);
+            if (match) {
+                const latStr = match[1];
+                const lngStr = match[2];
+                const latNum = parseFloat(latStr);
+                const lngNum = parseFloat(lngStr);
+
+                if (!isNaN(latNum) && !isNaN(lngNum)) {
+                    const latDir = latNum < 0 ? 'S' : 'N';
+                    const lngDir = lngNum < 0 ? 'W' : 'E';
+                    // Pertahankan jumlah digit desimal asli yang di-copy pengguna (tanpa tanda minus)
+                    const cleanLat = latStr.replace(/^[+-]/, '');
+                    const cleanLng = lngStr.replace(/^[+-]/, '');
+                    return `${cleanLat}${latDir} ${cleanLng}${lngDir}`;
+                }
+            }
+            return trimmed;
+        }
+
+        function updateTimestampFromPickers() {
+            currentFormattedTimestamp = getFormattedTimestampFromPickers();
+            if (formattedTimestampPreview) {
+                formattedTimestampPreview.textContent = currentFormattedTimestamp;
+            }
+            updateFilenamePreview();
+            renderCanvas();
+        }
+
+        function setPickersToNow() {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = padZero(now.getMonth() + 1);
+            const dd = padZero(now.getDate());
+            const hh = padZero(now.getHours());
+            const min = padZero(now.getMinutes());
+            const ss = padZero(now.getSeconds());
+
+            datePicker.value = `${yyyy}-${mm}-${dd}`;
+            timePicker.value = `${hh}:${min}:${ss}`;
+            updateTimestampFromPickers();
+        }
+
+        function updateFilenamePreview() {
+            const cleanTs = (currentFormattedTimestamp || 'timestamp')
+                .replace(/[^a-zA-Z0-9]+/g, '-')
+                .replace(/^-|-$/g, '');
+            outputFilenamePreview.textContent = `${originalFileName}-${cleanTs}.jpg`;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            toastMsg.textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2600);
+        }
+
+        // Buat gambar contoh (industrial flow meter) jika pengguna belum upload foto
+        function drawSampleBackground(targetCtx, width, height) {
+            // Gradasi latar belakang menyerupai foto lapangan indoor
+            const bgGrad = targetCtx.createLinearGradient(0, 0, width, height);
+            bgGrad.addColorStop(0, '#94a3b8');
+            bgGrad.addColorStop(0.5, '#64748b');
+            bgGrad.addColorStop(1, '#334155');
+            targetCtx.fillStyle = bgGrad;
+            targetCtx.fillRect(0, 0, width, height);
+
+            // Efek lingkaran meteran air / alat di tengah sebagai ilustrasi contoh
+            const cx = width * 0.5;
+            const cy = height * 0.42;
+            const radius = Math.min(width, height) * 0.32;
+
+            // Bayangan luar
+            targetCtx.save();
+            targetCtx.beginPath();
+            targetCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+            targetCtx.fillStyle = '#475569';
+            targetCtx.shadowColor = 'rgba(0,0,0,0.45)';
+            targetCtx.shadowBlur = 35;
+            targetCtx.shadowOffsetY = 15;
+            targetCtx.fill();
+            targetCtx.restore();
+
+            // Bingkai metalik
+            targetCtx.beginPath();
+            targetCtx.arc(cx, cy, radius * 0.88, 0, Math.PI * 2);
+            targetCtx.fillStyle = '#e2e8f0';
+            targetCtx.fill();
+            targetCtx.lineWidth = radius * 0.08;
+            targetCtx.strokeStyle = '#94a3b8';
+            targetCtx.stroke();
+
+            // Layar LCD
+            const lcdW = radius * 1.1;
+            const lcdH = radius * 0.42;
+            targetCtx.fillStyle = '#9ca3af';
+            targetCtx.beginPath();
+            targetCtx.roundRect(cx - lcdW / 2, cy - lcdH / 2, lcdW, lcdH, 12);
+            targetCtx.fill();
+
+            // Angka LCD
+            targetCtx.fillStyle = '#374151';
+            targetCtx.font = `bold ${Math.round(radius * 0.22)}px monospace`;
+            targetCtx.textAlign = 'center';
+            targetCtx.textBaseline = 'middle';
+            targetCtx.fillText('0.000', cx, cy);
+
+            // Petunjuk di atas
+            targetCtx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+            targetCtx.beginPath();
+            targetCtx.roundRect(width * 0.12, height * 0.06, width * 0.76, height * 0.08, 16);
+            targetCtx.fill();
+
+            targetCtx.fillStyle = '#f8fafc';
+            targetCtx.font = `600 ${Math.round(width * 0.026)}px Inter, sans-serif`;
+            targetCtx.fillText('CONTOH PRATINJAU — UPLOAD FOTO ANDA DI PANEL KIRI', cx, height * 0.10);
+        }
+
+        function renderCanvas() {
+            const width = uploadedImage ? uploadedImage.naturalWidth : 1200;
+            const height = uploadedImage ? uploadedImage.naturalHeight : 1600;
+
+            canvas.width = width;
+            canvas.height = height;
+
+            // 1. Gambar foto asli atau background contoh
+            if (uploadedImage) {
+                ctx.drawImage(uploadedImage, 0, 0, width, height);
+            } else {
+                drawSampleBackground(ctx, width, height);
+            }
+
+            // 2. Kumpulkan baris-baris teks dari atas ke bawah sesuai urutan foto contoh
+            // Jika kolom belum diisi saat masih pratinjau awal, gunakan teks contoh agar pratinjau tetap terlihat jelas
+            const isAllLocationEmpty = ![
+                inputKoordinat.value,
+                inputJalan.value,
+                inputDesa.value,
+                inputKecamatan.value,
+                inputKabupaten.value,
+                inputProvinsi.value
+            ].some(v => v.trim().length > 0);
+
+            const formattedCoord = formatCoordinateText(inputKoordinat.value);
+
+            const lines = isAllLocationEmpty && !uploadedImage ? [
+                currentFormattedTimestamp.trim(),
+                'Jl. Raya',
+                'Sidamulya',
+                'Kecamatan Wanasari',
+                'Kabupaten Brebes',
+                'Jawa Tengah'
+            ] : [
+                currentFormattedTimestamp.trim(),
+                formattedCoord,
+                inputJalan.value.trim(),
+                inputDesa.value.trim(),
+                inputKecamatan.value.trim(),
+                inputKabupaten.value.trim(),
+                inputProvinsi.value.trim()
+            ].filter(line => line.length > 0);
+
+            if (lines.length === 0) return;
+
+            // 3. Hitung ukuran font proporsional terhadap dimensi foto (seperti aplikasi Timestamp Camera)
+            // Pada foto portrait 1200x1600, font standar adalah sekitar ~42px (3.5% dari sisi terpendek)
+            const baseDimension = Math.min(width, height);
+            const scaleFactor = Number(sliderFontSize.value) / 100;
+            const fontSize = Math.max(14, Math.round(baseDimension * 0.0365 * scaleFactor));
+            const lineHeightMultiplier = Number(sliderLineHeight.value) / 100;
+            const lineHeight = fontSize * lineHeightMultiplier;
+
+            const marginXPercent = Number(sliderMarginX.value) / 1000; // default 20 -> 2.0%
+            const marginYPercent = Number(sliderMarginY.value) / 1000; // default 20 -> 2.0%
+
+            const rightX = width - Math.round(baseDimension * marginXPercent);
+            const bottomY = height - Math.round(baseDimension * marginYPercent);
+
+            // 4. Konfigurasi gaya font menyerupai Android Timestamp Camera
+            ctx.save();
+            ctx.font = `400 ${fontSize}px 'Roboto', sans-serif`;
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'bottom';
+
+            const shadowIntensity = Number(sliderShadow.value) / 100;
+
+            // Gambar dari baris paling bawah ke atas agar rata bawah tetap presisi
+            for (let i = 0; i < lines.length; i++) {
+                const lineIndexFromBottom = lines.length - 1 - i;
+                const text = lines[i];
+                const yPos = bottomY - (lineIndexFromBottom * lineHeight);
+
+                // Outline tipis & bayangan lembut agar terbaca jelas di area foto yang terang maupun gelap
+                if (shadowIntensity > 0) {
+                    ctx.save();
+                    ctx.shadowColor = `rgba(0, 0, 0, ${Math.min(0.95, shadowIntensity * 1.1)})`;
+                    ctx.shadowBlur = Math.max(2, fontSize * 0.14 * shadowIntensity);
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = Math.max(1, fontSize * 0.04 * shadowIntensity);
+
+                    ctx.lineWidth = Math.max(1.5, fontSize * 0.065 * shadowIntensity);
+                    ctx.strokeStyle = `rgba(0, 0, 0, ${Math.min(0.75, shadowIntensity * 0.75)})`;
+                    ctx.lineJoin = 'round';
+                    ctx.strokeText(text, rightX, yPos);
+                    ctx.restore();
+                }
+
+                // Teks utama putih bersih
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText(text, rightX, yPos);
+            }
+
+            ctx.restore();
+        }
+
+        function handleImageFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showToast('Mohon pilih file gambar (JPG/PNG/WEBP)');
+                return;
+            }
+
+            originalFileName = file.name.replace(/\.[^/.]+$/, "") || 'foto-lapangan';
+            updateFilenamePreview();
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    uploadedImage = img;
+                    fileDimensionsBadge.textContent = `${img.naturalWidth} × ${img.naturalHeight} px`;
+                    fileDimensionsBadge.classList.remove('hidden');
+                    previewStatusText.innerHTML = `<i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-600"></i> Foto siap diunduh dengan resolusi penuh (${img.naturalWidth}×${img.naturalHeight}px)`;
+                    lucide.createIcons();
+                    renderCanvas();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        imageInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handleImageFile(e.target.files[0]);
+            }
+        });
+
+        // Drag and Drop support
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add('border-blue-500', 'bg-blue-50');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+            });
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            if (dt.files && dt.files[0]) {
+                handleImageFile(dt.files[0]);
+            }
+        });
+
+        // Event Listeners untuk perubahan teks dan tanggal
+        datePicker.addEventListener('change', updateTimestampFromPickers);
+        timePicker.addEventListener('input', updateTimestampFromPickers);
+        btnNow.addEventListener('click', () => {
+            setPickersToNow();
+            showToast('Waktu diperbarui ke jam sekarang');
+        });
+
+        chkConvertGmaps.addEventListener('change', renderCanvas);
+
+        [inputKoordinat, inputJalan, inputDesa, inputKecamatan, inputKabupaten, inputProvinsi].forEach(el => {
+            el.addEventListener('input', () => {
+                updateFilenamePreview();
+                renderCanvas();
+            });
+        });
+
+        // Event Listeners untuk Sliders
+        sliderFontSize.addEventListener('input', () => {
+            fontSizeVal.textContent = `${sliderFontSize.value}%`;
+            renderCanvas();
+        });
+        sliderLineHeight.addEventListener('input', () => {
+            lineHeightVal.textContent = `${(Number(sliderLineHeight.value) / 100).toFixed(2)}x`;
+            renderCanvas();
+        });
+        sliderMarginX.addEventListener('input', () => {
+            marginXVal.textContent = `${(Number(sliderMarginX.value) / 10).toFixed(1)}%`;
+            renderCanvas();
+        });
+        sliderMarginY.addEventListener('input', () => {
+            marginYVal.textContent = `${(Number(sliderMarginY.value) / 10).toFixed(1)}%`;
+            renderCanvas();
+        });
+        sliderShadow.addEventListener('input', () => {
+            const v = Number(sliderShadow.value);
+            shadowVal.textContent = v === 0 ? 'Tanpa Bayangan' : v < 40 ? 'Tipis' : v < 75 ? 'Sedang' : 'Tebal';
+            renderCanvas();
+        });
+
+        // Reset / kosongkan semua kolom lokasi
+        btnClearLocation.addEventListener('click', () => {
+            inputKoordinat.value = '';
+            inputJalan.value = '';
+            inputDesa.value = '';
+            inputKecamatan.value = '';
+            inputKabupaten.value = '';
+            inputProvinsi.value = '';
+            renderCanvas();
+            showToast('Kolom lokasi dikosongkan');
+        });
+
+        // Unduh Foto Hasil Timestamp
+        btnDownload.addEventListener('click', () => {
+            renderCanvas();
+            const fileName = outputFilenamePreview.textContent || 'foto-timestamp.jpg';
+            canvas.toBlob((blob) => {
+                if (!blob) return;
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                showToast('Foto berhasil diunduh!');
+            }, 'image/jpeg', 0.95);
+        });
+
+        // Inisialisasi saat halaman dimuat
+        window.onload = function() {
+            setPickersToNow();
+
+            // Pastikan font Roboto sudah siap sebelum merender canvas pertama kali
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(() => {
+                    renderCanvas();
+                });
+            } else {
+                renderCanvas();
+            }
+        };
+    </script>
+</body>
+</html>
