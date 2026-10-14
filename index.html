@@ -142,7 +142,7 @@
                     <div class="pt-2 border-t border-slate-100 space-y-3.5">
                         <div>
                             <label for="inputJalan" class="block text-xs font-medium text-slate-700 mb-1">Nama Jalan</label>
-                            <input type="text" id="inputJalan" value="" placeholder="Contoh: Jl. Raya" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <input type="text" id="inputJalan" value="" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
 
                         <div>
@@ -238,25 +238,42 @@
                         </div>
 
                         <div class="flex items-center gap-2">
-                            <button id="btnDownload" type="button" class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer">
+                            <button id="btnDownload" type="button" disabled class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer">
                                 <i data-lucide="download" class="w-4 h-4"></i>
                                 <span>Unduh Foto (.JPG)</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- Canvas Container -->
-                    <div class="canvas-container rounded-xl overflow-hidden flex items-center justify-center min-h-[380px] max-h-[72vh] p-2 sm:p-4 border border-slate-800 relative">
-                        <canvas id="previewCanvas" class="max-w-full max-h-[68vh] w-auto h-auto object-contain rounded shadow-2xl"></canvas>
+                    <!-- Canvas Container & Clean Empty State -->
+                    <div id="previewContainer" class="rounded-xl overflow-hidden flex items-center justify-center min-h-[380px] max-h-[72vh] p-4 border border-slate-200 bg-slate-50/70 relative transition-colors">
+                        
+                        <!-- Clean Empty State (Ditampilkan sebelum foto di-upload) -->
+                        <label for="imageInput" id="emptyState" class="flex flex-col items-center justify-center text-center p-8 cursor-pointer max-w-sm mx-auto group">
+                            <div class="w-16 h-16 rounded-2xl bg-white border border-slate-200 shadow-sm text-slate-400 group-hover:text-blue-600 group-hover:border-blue-200 flex items-center justify-center mb-4 transition">
+                                <i data-lucide="image-plus" class="w-8 h-8"></i>
+                            </div>
+                            <p class="text-sm font-semibold text-slate-700 group-hover:text-blue-600 transition">Belum ada foto yang dipilih</p>
+                            <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                                Silakan upload foto pada langkah 1 (mendukung foto <strong>Vertikal / Portrait</strong> maupun <strong>Horizontal / Landscape</strong> dengan resolusi asli).
+                            </p>
+                            <span class="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 group-hover:bg-blue-100 px-3.5 py-2 rounded-lg transition">
+                                <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                                Pilih Foto Sekarang
+                            </span>
+                        </label>
+
+                        <!-- Canvas (Hanya tampil setelah ada foto) -->
+                        <canvas id="previewCanvas" class="hidden max-w-full max-h-[68vh] w-auto h-auto object-contain rounded shadow-2xl"></canvas>
                     </div>
 
                     <!-- Preview Footer Info -->
                     <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                         <span id="previewStatusText" class="flex items-center gap-1.5">
-                            <i data-lucide="info" class="w-3.5 h-3.5 text-blue-500"></i>
-                            Menampilkan pratinjau contoh. Silakan upload foto Anda di sebelah kiri.
+                            <i data-lucide="info" class="w-3.5 h-3.5 text-slate-400"></i>
+                            Menunggu foto di-upload...
                         </span>
-                        <span class="font-mono text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded" id="outputFilenamePreview">timestamp-28-Sep-2026.jpg</span>
+                        <span class="font-mono text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded" id="outputFilenamePreview">foto-lapangan.jpg</span>
                     </div>
                 </div>
             </div>
@@ -317,6 +334,8 @@
         const btnClearLocation = document.getElementById('btnClearLocation');
         const btnDownload = document.getElementById('btnDownload');
 
+        const previewContainer = document.getElementById('previewContainer');
+        const emptyState = document.getElementById('emptyState');
         const canvas = document.getElementById('previewCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -410,102 +429,26 @@
             }, 2600);
         }
 
-        // Buat gambar contoh (industrial flow meter) jika pengguna belum upload foto
-        function drawSampleBackground(targetCtx, width, height) {
-            // Gradasi latar belakang menyerupai foto lapangan indoor
-            const bgGrad = targetCtx.createLinearGradient(0, 0, width, height);
-            bgGrad.addColorStop(0, '#94a3b8');
-            bgGrad.addColorStop(0.5, '#64748b');
-            bgGrad.addColorStop(1, '#334155');
-            targetCtx.fillStyle = bgGrad;
-            targetCtx.fillRect(0, 0, width, height);
-
-            // Efek lingkaran meteran air / alat di tengah sebagai ilustrasi contoh
-            const cx = width * 0.5;
-            const cy = height * 0.42;
-            const radius = Math.min(width, height) * 0.32;
-
-            // Bayangan luar
-            targetCtx.save();
-            targetCtx.beginPath();
-            targetCtx.arc(cx, cy, radius, 0, Math.PI * 2);
-            targetCtx.fillStyle = '#475569';
-            targetCtx.shadowColor = 'rgba(0,0,0,0.45)';
-            targetCtx.shadowBlur = 35;
-            targetCtx.shadowOffsetY = 15;
-            targetCtx.fill();
-            targetCtx.restore();
-
-            // Bingkai metalik
-            targetCtx.beginPath();
-            targetCtx.arc(cx, cy, radius * 0.88, 0, Math.PI * 2);
-            targetCtx.fillStyle = '#e2e8f0';
-            targetCtx.fill();
-            targetCtx.lineWidth = radius * 0.08;
-            targetCtx.strokeStyle = '#94a3b8';
-            targetCtx.stroke();
-
-            // Layar LCD
-            const lcdW = radius * 1.1;
-            const lcdH = radius * 0.42;
-            targetCtx.fillStyle = '#9ca3af';
-            targetCtx.beginPath();
-            targetCtx.roundRect(cx - lcdW / 2, cy - lcdH / 2, lcdW, lcdH, 12);
-            targetCtx.fill();
-
-            // Angka LCD
-            targetCtx.fillStyle = '#374151';
-            targetCtx.font = `bold ${Math.round(radius * 0.22)}px monospace`;
-            targetCtx.textAlign = 'center';
-            targetCtx.textBaseline = 'middle';
-            targetCtx.fillText('0.000', cx, cy);
-
-            // Petunjuk di atas
-            targetCtx.fillStyle = 'rgba(15, 23, 42, 0.65)';
-            targetCtx.beginPath();
-            targetCtx.roundRect(width * 0.12, height * 0.06, width * 0.76, height * 0.08, 16);
-            targetCtx.fill();
-
-            targetCtx.fillStyle = '#f8fafc';
-            targetCtx.font = `600 ${Math.round(width * 0.026)}px Inter, sans-serif`;
-            targetCtx.fillText('CONTOH PRATINJAU — UPLOAD FOTO ANDA DI PANEL KIRI', cx, height * 0.10);
-        }
-
         function renderCanvas() {
-            const width = uploadedImage ? uploadedImage.naturalWidth : 1200;
-            const height = uploadedImage ? uploadedImage.naturalHeight : 1600;
+            // Jika belum ada foto yang di-upload, jangan gambar apa pun di canvas
+            if (!uploadedImage) {
+                return;
+            }
+
+            // 1. Sesuaikan ukuran canvas 100% mengikuti resolusi asli foto (Vertikal, Horizontal, maupun Persegi)
+            const width = uploadedImage.naturalWidth;
+            const height = uploadedImage.naturalHeight;
 
             canvas.width = width;
             canvas.height = height;
 
-            // 1. Gambar foto asli atau background contoh
-            if (uploadedImage) {
-                ctx.drawImage(uploadedImage, 0, 0, width, height);
-            } else {
-                drawSampleBackground(ctx, width, height);
-            }
+            // Gambar foto asli tanpa pemotongan (zero cropping)
+            ctx.drawImage(uploadedImage, 0, 0, width, height);
 
             // 2. Kumpulkan baris-baris teks dari atas ke bawah sesuai urutan foto contoh
-            // Jika kolom belum diisi saat masih pratinjau awal, gunakan teks contoh agar pratinjau tetap terlihat jelas
-            const isAllLocationEmpty = ![
-                inputKoordinat.value,
-                inputJalan.value,
-                inputDesa.value,
-                inputKecamatan.value,
-                inputKabupaten.value,
-                inputProvinsi.value
-            ].some(v => v.trim().length > 0);
-
             const formattedCoord = formatCoordinateText(inputKoordinat.value);
 
-            const lines = isAllLocationEmpty && !uploadedImage ? [
-                currentFormattedTimestamp.trim(),
-                'Jl. Raya',
-                'Sidamulya',
-                'Kecamatan Wanasari',
-                'Kabupaten Brebes',
-                'Jawa Tengah'
-            ] : [
+            const lines = [
                 currentFormattedTimestamp.trim(),
                 formattedCoord,
                 inputJalan.value.trim(),
@@ -517,8 +460,10 @@
 
             if (lines.length === 0) return;
 
-            // 3. Hitung ukuran font proporsional terhadap dimensi foto (seperti aplikasi Timestamp Camera)
-            // Pada foto portrait 1200x1600, font standar adalah sekitar ~42px (3.5% dari sisi terpendek)
+            // 3. Hitung ukuran font proporsional terhadap sisi terpendek foto (Math.min(width, height))
+            // Dengan rumus ini, baik foto Vertikal (misal 1200x1600) maupun Horizontal (misal 1600x1200),
+            // maupun resolusi kamera HP tinggi (misal 3000x4000) atau foto kompresi WhatsApp,
+            // proporsi ukuran huruf dan jarak pinggirnya akan selalu konsisten & sama persis.
             const baseDimension = Math.min(width, height);
             const scaleFactor = Number(sliderFontSize.value) / 100;
             const fontSize = Math.max(14, Math.round(baseDimension * 0.0365 * scaleFactor));
@@ -582,9 +527,22 @@
                 const img = new Image();
                 img.onload = function() {
                     uploadedImage = img;
-                    fileDimensionsBadge.textContent = `${img.naturalWidth} × ${img.naturalHeight} px`;
+
+                    // Deteksi orientasi foto (Vertikal / Horizontal / Persegi)
+                    const w = img.naturalWidth;
+                    const h = img.naturalHeight;
+                    const orientationLabel = h > w ? 'Vertikal' : w > h ? 'Horizontal' : 'Persegi';
+
+                    // Tampilkan canvas dan sembunyikan empty state
+                    emptyState.classList.add('hidden');
+                    canvas.classList.remove('hidden');
+                    previewContainer.classList.add('canvas-container', 'border-slate-800');
+                    previewContainer.classList.remove('bg-slate-50/70', 'border-slate-200');
+                    btnDownload.disabled = false;
+
+                    fileDimensionsBadge.textContent = `${w} × ${h} px (${orientationLabel})`;
                     fileDimensionsBadge.classList.remove('hidden');
-                    previewStatusText.innerHTML = `<i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-600"></i> Foto siap diunduh dengan resolusi penuh (${img.naturalWidth}×${img.naturalHeight}px)`;
+                    previewStatusText.innerHTML = `<i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-600"></i> Resolusi asli terjaga: <strong>${w} × ${h} px</strong> (Foto ${orientationLabel})`;
                     lucide.createIcons();
                     renderCanvas();
                 };
